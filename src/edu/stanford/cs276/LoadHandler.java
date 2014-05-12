@@ -1,5 +1,7 @@
 package edu.stanford.cs276;
 
+import edu.stanford.cs276.util.Dictionary;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -137,8 +139,9 @@ public class LoadHandler
     int totalDocCount = 0;
     
     //counts number of documents in which each term appears
-    Map<String,Double> termDocCount = new HashMap<String,Double>();
-    
+    //Map<String,Double> termDocCount = new HashMap<String,Double>();
+    Dictionary termDocCount = new Dictionary();
+
     /*
      * @//TODO : Your code here --consult pa1 (will be basically a simplified version)
      */
@@ -157,16 +160,15 @@ public class LoadHandler
 
           BufferedReader reader = new BufferedReader(new FileReader(file));
           String line;
+          HashSet<String> docTerms = new HashSet<String>();
           while ((line = reader.readLine()) != null) {
             String[] tokens = line.trim().split("\\s+");
             for (String token : tokens) {
-              if (!termDocCount.containsKey(token)) {
-                termDocCount.put(token, 1.0);
-              } else {
-                double curCount = termDocCount.get(token);
-                termDocCount.put(token, curCount + 1.0);
-              }
+              docTerms.add(token);
             }
+          }
+          for (String term : docTerms) {
+            termDocCount.add(term);
           }
         }
       }
@@ -179,17 +181,17 @@ public class LoadHandler
     
     System.out.println(totalDocCount);
     
-    Map<String, Double> idfs = new HashMap<String, Double>(termDocCount.keySet().size());
+    Map<String, Double> idfs = new HashMap<String, Double>(termDocCount.getMap().keySet().size());
     //make idf
-    for (String term : termDocCount.keySet())
+    for (String term : termDocCount.getMap().keySet())
     {
       /*
        * @//TODO : Your code here
        */
       
       // --- Begin our edits here ---
-      
-      
+      double idf = Math.log(totalDocCount / (double)termDocCount.count(term));
+      idfs.put(term, idf);
 
       // ----------------------------
 
@@ -207,7 +209,7 @@ public class LoadHandler
       ioe.printStackTrace();
     }
       
-    return termDocCount;
+    return termDocCount.getMap();
   }
 
 }
