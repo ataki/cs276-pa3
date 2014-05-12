@@ -12,12 +12,10 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class LoadHandler 
 {
@@ -105,20 +103,20 @@ public class LoadHandler
   public static Map<String,Double> loadDFs(String idfFile)
   {
       Map<String,Double> termDocCount = null;
-        try
-        {
-           FileInputStream fis = new FileInputStream(idfFile);
-           ObjectInputStream ois = new ObjectInputStream(fis);
-           termDocCount = (HashMap<String,Double>) ois.readObject();
-           ois.close();
-           fis.close();
-        }
-        catch(IOException | ClassNotFoundException ioe)
-        {
-           ioe.printStackTrace();
-           return null;
-        }
-    return termDocCount;
+      try {
+        FileInputStream fis = new FileInputStream(idfFile);
+        ObjectInputStream ois = new ObjectInputStream(fis);
+        termDocCount = (HashMap<String,Double>) ois.readObject();
+        ois.close();
+        fis.close();
+      } catch (IOException ioe) {
+        ioe.printStackTrace();
+        return null;
+      } catch (ClassNotFoundException cnfe) {
+        cnfe.printStackTrace();
+        return null;
+      }
+      return termDocCount;
   }
   
   //builds and then serializes from file
@@ -178,8 +176,8 @@ public class LoadHandler
     }
 
     // -----------------------
-    
-    System.out.println(totalDocCount);
+    System.out.println("Read " + totalDocCount + " total documents; found " + termDocCount.termCount() + " terms");
+    // System.out.println(totalDocCount);
     
     Map<String, Double> idfs = new HashMap<String, Double>(termDocCount.getMap().keySet().size());
     //make idf
@@ -197,19 +195,18 @@ public class LoadHandler
 
     }
     
-    
     //saves to file
     try {
       FileOutputStream fos = new FileOutputStream(idfFile);
       ObjectOutputStream oos = new ObjectOutputStream(fos);
-      oos.writeObject(termDocCount);
+      oos.writeObject(idfs);
       oos.close();
       fos.close();
     } catch(IOException ioe) {
       ioe.printStackTrace();
     }
       
-    return termDocCount.getMap();
+    return idfs;
   }
 
 }
