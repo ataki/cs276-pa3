@@ -51,7 +51,13 @@ public class Rank
 					/*
 					 * @//TODO : Your code here
 					 */
-					return -1;
+					// return -1;
+                    if (o1.getSecond() - o2.getSecond() > 0)
+                        return 1;
+                    else if (o1.getSecond() - o2.getSecond() < 0)
+                        return -1;
+                    else
+                        return 0;
 				}	
 			});
 			
@@ -126,12 +132,23 @@ public class Rank
 	{
 
 		Map<String,Double> idfs = null;
-		
-		/*
-		 * @//TODO : Your code here to handle idfs
-		 */
-		
-		
+
+        // --- Begin our edits ---
+
+        /* As per handout, hardcode paths to other training data */
+
+        String cwd = System.getProperty("user.dir");
+        File idfsFile = new File(cwd, "idfs.dict");
+        if (idfsFile.exists()) {
+            System.out.println("Loading from file");
+            idfs = LoadHandler.loadDFs(idfsFile.getPath());
+        } else {
+            File dataDir = new File(cwd, "pa1_data");
+            idfs = LoadHandler.buildDFs(dataDir.getPath(), idfsFile.getPath());
+        }
+
+        // ---------------------
+
 		if (args.length < 2) {
 			System.err.println("Insufficient number of arguments: <queryDocTrainData path> taskType");
 		}
@@ -158,10 +175,11 @@ public class Rank
 		Map<Query,List<String>> queryRankings = score(queryDict,scoreType,idfs);
 		
 		//print results and save them to file 
-//		String outputFilePath =  null;
-//		writeRankedResultsToFile(queryRankings,outputFilePath);
+  		String outputFilePath = new File(cwd, "results.txt").getPath();
+		writeRankedResultsToFile(queryRankings,outputFilePath);
 		
 		//print results
-		printRankedResults(queryRankings);
+		// printRankedResults(queryRankings);
 	}
 }
+

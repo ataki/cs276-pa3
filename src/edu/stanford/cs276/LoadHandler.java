@@ -140,12 +140,6 @@ public class LoadHandler
     //Map<String,Double> termDocCount = new HashMap<String,Double>();
     Dictionary termDocCount = new Dictionary();
 
-    /*
-     * @//TODO : Your code here --consult pa1 (will be basically a simplified version)
-     */
-    
-    // --- Begin our edits ---
-
     try {
 
       // updates totalDocCount and populates termDocCount
@@ -175,24 +169,15 @@ public class LoadHandler
       e.printStackTrace();
     }
 
-    // -----------------------
     System.out.println("Read " + totalDocCount + " total documents; found " + termDocCount.termCount() + " terms");
     // System.out.println(totalDocCount);
     
     Map<String, Double> idfs = new HashMap<String, Double>(termDocCount.getMap().keySet().size());
+
     //make idf
-    for (String term : termDocCount.getMap().keySet())
-    {
-      /*
-       * @//TODO : Your code here
-       */
-      
-      // --- Begin our edits here ---
+    for (String term : termDocCount.getMap().keySet()) {
       double idf = Math.log(totalDocCount / (double)termDocCount.count(term));
       idfs.put(term, idf);
-
-      // ----------------------------
-
     }
     
     //saves to file
