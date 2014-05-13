@@ -19,6 +19,7 @@ public class Dictionary implements Serializable {
         termCount = 0;
         map = new HashMap<String, Double>();
     }
+
     public Map<String, Double> getMap() {
         return map;
     }

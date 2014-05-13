@@ -15,20 +15,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class CosineSimilarityScorer extends AScorer
-{
-	public CosineSimilarityScorer(Map<String,Double> idfs)
-	{
-		super(idfs);
-	}
-	
-	///////////////weights///////////////////////////
+public class CosineSimilarityScorer extends AScorer {
+    public CosineSimilarityScorer(Map<String, Double> idfs) {
+        super(idfs);
+    }
+
+    ///////////////weights///////////////////////////
     double urlweight = 1;
-    double titleweight  = 1;
+    double titleweight = 1;
     double bodyweight = 1;
     double headerweight = 1;
     double anchorweight = 1;
-    
+
     double smoothingBodyLength = 500;
     //////////////////////////////////////////
 
@@ -41,28 +39,21 @@ public class CosineSimilarityScorer extends AScorer
         }
         return sum;
     }
-	
-	public double getNetScore(Map<String,Map<String, Double>> tfs, Query q, Map<String,Double> tfQuery,Document d)
-	{
-		double score;
-		
-		/*
-		 * @//TODO : Your code here
-		 */
 
-        // -- Begin edits here --
+    public double getNetScore(Map<String, Map<String, Double>> tfs, Query q, Map<String, Double> tfQuery, Document d) {
+        double score;
 
-        double [] docVector = new double[q.queryWords.size()];
-        double [] queryVector = new double[q.queryWords.size()];
+        double[] docVector = new double[q.queryWords.size()];
+        double[] queryVector = new double[q.queryWords.size()];
 
         for (int i = 0; i < q.queryWords.size(); i++) {
             String term = q.queryWords.get(i);
             double docScore = (
-                urlweight    * tfs.get("url").get(term) +
-                titleweight  * tfs.get("title").get(term) +
-                bodyweight   * tfs.get("body").get(term) +
-                headerweight * tfs.get("header").get(term) +
-                anchorweight * tfs.get("anchor").get(term)
+                    urlweight * tfs.get("url").get(term) +
+                            titleweight * tfs.get("title").get(term) +
+                            bodyweight * tfs.get("body").get(term) +
+                            headerweight * tfs.get("header").get(term) +
+                            anchorweight * tfs.get("anchor").get(term)
             );
             docVector[i] = docScore;
             queryVector[i] = tfQuery.get(term);
@@ -70,20 +61,11 @@ public class CosineSimilarityScorer extends AScorer
 
         score = dot(docVector, queryVector);
 
-        // ----------------------
-		
-		return score;
-	}
+        return score;
+    }
 
-	
-	public void normalizeTFs(Map<String,Map<String, Double>> tfs,Document d, Query q)
-	{
-		/*
-		 * @//TODO : Your code here
-		 */
 
-        // -- Begin edits here --
-
+    public void normalizeTFs(Map<String, Map<String, Double>> tfs, Document d, Query q) {
         for (String type : tfs.keySet()) {
             // mapping of term -> raw_score for this field type
             Map<String, Double> docMap = tfs.get(type);
@@ -107,26 +89,20 @@ public class CosineSimilarityScorer extends AScorer
                 docMap.put(term, normalizedTerms.get(term));
             }
         }
+    }
 
-        // --------------------------
-	}
 
-	
-	@Override
-	public double getSimScore(Document d, Query q) 
-	{
-		Map<String,Map<String, Double>> tfs = this.getDocTermFreqs(d,q);
-		
-		this.normalizeTFs(tfs, d, q);
-		
-		Map<String,Double> tfQuery = getQueryFreqs(q);
-		
-		
-        return getNetScore(tfs,q,tfQuery,d);
-	}
+    @Override
+    public double getSimScore(Document d, Query q) {
+        Map<String, Map<String, Double>> tfs = this.getDocTermFreqs(d, q);
 
-	
-	
-	
-	
+        this.normalizeTFs(tfs, d, q);
+
+        Map<String, Double> tfQuery = getQueryFreqs(q);
+
+
+        return getNetScore(tfs, q, tfQuery, d);
+    }
+
+
 }

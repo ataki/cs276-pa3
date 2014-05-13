@@ -6,26 +6,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class AScorer 
-{
+public abstract class AScorer {
 
-	Map<String,Double> idfs;
-	String[] TFTYPES = {"url","title","body","header","anchor"};
+    Map<String, Double> idfs;
+    String[] TFTYPES = {"url", "title", "body", "header", "anchor"};
 
-	public AScorer(Map<String,Double> idfs)
-	{
-		this.idfs = idfs;
-	}
-	
-	//scores each document for each query
-	public abstract double getSimScore(Document d, Query q);
-	
-	//handle the query vector
-	public Map<String,Double> getQueryFreqs(Query q)
-	{
-		Map<String,Double> tfQuery = new HashMap<String,Double>();
+    public AScorer(Map<String, Double> idfs) {
+        this.idfs = idfs;
+    }
 
-        // --- Begin edits ---
+    //scores each document for each query
+    public abstract double getSimScore(Document d, Query q);
+
+    //handle the query vector
+    public Map<String, Double> getQueryFreqs(Query q) {
+        Map<String, Double> tfQuery = new HashMap<String, Double>();
 
         for (String word : q.queryWords) {
             word = word.toLowerCase();
@@ -37,48 +32,43 @@ public abstract class AScorer
             }
         }
 
-        // -----------------
+        return tfQuery;
+    }
 
-		return tfQuery;
-	}
-	
 
-	
-	////////////////////Initialization/Parsing Methods/////////////////////
+    ////////////////////Initialization/Parsing Methods/////////////////////
 
-    private String [] splitUrl(String url) {
+    protected String[] splitUrl(String url) {
         return url.split("\\W+");
     }
 
-    private String [] splitTitleOrHeader(String sentence) {
+    protected String[] splitTitleOrHeader(String sentence) {
         return sentence.split("\\s+");
     }
-	
+
     ////////////////////////////////////////////////////////
-	private Map<String, Double> createFreqMap(String[] terms) {
+    protected Map<String, Double> createFreqMap(String[] terms) {
         Map<String, Double> freqMap = new HashMap<String, Double>();
         for (String term : terms) {
             if (!freqMap.containsKey(term)) {
                 freqMap.put(term, 1.0);
-            }
-            else {
-                freqMap.put(term, freqMap.get(term)+1.0);
+            } else {
+                freqMap.put(term, freqMap.get(term) + 1.0);
             }
         }
         return freqMap;
     }
 
-	
-	/*/
-	 * Creates the various kinds of term frequences (url, title, body, header, and anchor)
-	 * You can override this if you'd like, but it's likely that your concrete classes will share this implementation
-	 */
-	public Map<String,Map<String, Double>> getDocTermFreqs(Document d, Query q)
-	{
-		//map from tf type -> queryWord -> score
-		Map<String,Map<String, Double>> tfs = new HashMap<String,Map<String, Double>>();
-		
-		////////////////////Initialization/////////////////////
+
+    /*/
+     * Creates the various kinds of term frequences (url, title, body, header, and anchor)
+     * You can override this if you'd like, but it's likely that your concrete classes will share this implementation
+     */
+    public Map<String, Map<String, Double>> getDocTermFreqs(Document d, Query q) {
+        //map from tf type -> queryWord -> score
+        Map<String, Map<String, Double>> tfs = new HashMap<String, Map<String, Double>>();
+
+        ////////////////////Initialization/////////////////////
 
         // when calculating raw scores, lower-case terms of all fields
 
@@ -98,12 +88,12 @@ public abstract class AScorer
         }
         Map<String, Integer> docAnchors = new HashMap<String, Integer>();
         if (d.anchors != null) {
-            for (String term: d.anchors.keySet()) {
+            for (String term : d.anchors.keySet()) {
                 docAnchors.put(term.toLowerCase(), d.anchors.get(term));
             }
 
         }
-       List<String> queryWords = new ArrayList<String>();
+        List<String> queryWords = new ArrayList<String>();
         for (String word : q.queryWords) {
             queryWords.add(word.toLowerCase());
         }
@@ -121,8 +111,7 @@ public abstract class AScorer
             for (String term : headerTerms) {
                 if (!headersMap.containsKey(term)) {
                     headersMap.put(term, 1.0);
-                }
-                else {
+                } else {
                     headersMap.put(term, headersMap.get(term) + 1.0);
                 }
             }
@@ -131,7 +120,7 @@ public abstract class AScorer
         // body_hits
         Map<String, Double> bodyMap = new HashMap<String, Double>();
         for (String term : docBodyHits.keySet()) {
-            bodyMap.put(term, (double)docBodyHits.get(term).size());
+            bodyMap.put(term, (double) docBodyHits.get(term).size());
         }
 
         // anchors
@@ -139,11 +128,10 @@ public abstract class AScorer
         for (String anchor : docAnchors.keySet()) {
             String anchorTerms[] = anchor.split("\\s+");
             for (String term : anchorTerms) {
-                double termCount = (double)docAnchors.get(anchor);
+                double termCount = (double) docAnchors.get(anchor);
                 if (!anchorsMap.containsKey(term)) {
                     anchorsMap.put(term, termCount);
-                }
-                else {
+                } else {
                     anchorsMap.put(term, anchorsMap.get(term) + termCount);
                 }
             }
@@ -156,19 +144,17 @@ public abstract class AScorer
         allMaps.put("body", bodyMap);
         allMaps.put("anchor", anchorsMap);
 
-	    ////////////////////////////////////////////////////////
-		
-		//////////handle counts//////
+        ////////////////////////////////////////////////////////
 
-        for (String type: TFTYPES) {
+        //////////handle counts//////
+
+        for (String type : TFTYPES) {
             Map<String, Double> rawCountMap = new HashMap<String, Double>();
             Map<String, Double> typeCountMap = allMaps.get(type);
             for (String queryWord : queryWords) {
-                double count;
+                double count = 0.0;
                 if (typeCountMap.containsKey(queryWord))
                     count = typeCountMap.get(queryWord);
-                else
-                    count = 0.0;
 
                 // handle duplicate words in query
                 // by accumulating scores e.g.
@@ -182,8 +168,8 @@ public abstract class AScorer
             }
             tfs.put(type, rawCountMap);
         }
-		return tfs;
-	}
-	
+        return tfs;
+    }
+
 
 }
