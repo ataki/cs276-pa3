@@ -9,11 +9,13 @@ public class BM25Scorer extends AScorer {
         super(idfs);
         this.queryDict = queryDict;
 
-        ////////////// Initialize Lengths & Pagerank /////////////////////
+        ////////////// Initialize Lengths & Pagerank Scores /////////////////
 
         this.lengths = new HashMap<Document, Map<String, Double>>();
         this.avgLengths = new HashMap<String, Double>();
         this.pagerankScores = new HashMap<Document, Double>();
+        this.fieldWs = new HashMap<String, Double>();
+        this.fieldBs = new HashMap<String, Double>();
 
         this.avgLengths.put("url", 0.0);
         this.avgLengths.put("title", 0.0);
@@ -33,8 +35,12 @@ public class BM25Scorer extends AScorer {
         }
         this.totalNumDocs = docsSeen.size();
 
+        for (String field : this.avgLengths.keySet()) {
+            this.avgLengths.put(field, this.avgLengths.get(field) / totalNumDocs);
+        }
 
-        /////////////// Other Initialization ////////////////////////////
+
+        /////////////// Parameter Initialization ////////////////////////////
 
         this.fieldWs.put("url", this.urlweight);
         this.fieldWs.put("body", this.bodyweight);
@@ -48,6 +54,49 @@ public class BM25Scorer extends AScorer {
         this.fieldBs.put("header", this.bheader);
         this.fieldBs.put("anchor", this.banchor);
     }
+
+
+    ///////////////weights///////////////////////////
+    double urlweight = -1;
+    double titleweight = -1;
+    double bodyweight = -1;
+    double headerweight = -1;
+    double anchorweight = -1;
+
+    ///////bm25 specific weights///////////////
+    double burl = -1;
+    double btitle = -1;
+    double bheader = -1;
+    double bbody = -1;
+    double banchor = -1;
+
+    double k1 = -1;
+    double pageRankLambda = -1;
+    double pageRankLambdaPrime = -1;
+    double pageRankLambdaDoublePrime = -1;
+    //////////////////////////////////////////
+
+    ////////////bm25 data structures--feel free to modify ////////
+
+    // doc -> (field -> len)
+    Map<Document, Map<String, Double>> lengths;
+
+    // field -> avglen
+    Map<String, Double> avgLengths;
+
+    // doc -> pagerank
+    Map<Document, Double> pagerankScores;
+
+    // field -> B values
+    Map<String, Double> fieldBs;
+
+    // field -> W values
+    Map<String, Double> fieldWs;
+
+    // number of docs in training set
+    int totalNumDocs;
+
+    //////////////////////////////////////////
 
     private void updateGlobalLengths(Document d) {
         Map<String, Double> fieldLenMap = new HashMap<String, Double>();
@@ -73,8 +122,10 @@ public class BM25Scorer extends AScorer {
         fieldLenMap.put("url",    urlLen);
         fieldLenMap.put("title",  titleLen);
         fieldLenMap.put("body",   bodyLen);
-        fieldLenMap.put("header", headerLen)
+        fieldLenMap.put("header", headerLen);
         fieldLenMap.put("anchor", anchorLen);
+
+        this.lengths.put(d, fieldLenMap);
 
         // update average length for each field
         this.avgLengths.put("url", this.avgLengths.get("url") + urlLen);
@@ -88,49 +139,43 @@ public class BM25Scorer extends AScorer {
         this.pagerankScores.put(d, (double)d.page_rank);
     }
 
-    ///////////////weights///////////////////////////
-    double urlweight = -1;
-    double titleweight = -1;
-    double bodyweight = -1;
-    double headerweight = -1;
-    double anchorweight = -1;
+    private double pagerankVj(double pagerank) {
+        return Math.log(pageRankLambdaPrime + pagerank);
+    }
 
-    ///////bm25 specific weights///////////////
-    double burl = -1;
-    double btitle = -1;
-    double bheader = -1;
-    double bbody = -1;
-    double banchor = -1;
+    private double pagerankVjSigmoid(double pagerank) {
+        return 1.0 / (pageRankLambdaPrime + Math.exp(-pagerank * pageRankLambdaDoublePrime));
+    }
 
-    double k1 = -1;
-    double pageRankLambda = -1;
-    double pageRankLambdaPrime = -1;
-    //////////////////////////////////////////
+    private double pagerankVjSaturation(double pagerank) {
+        return pagerank / (pagerank + pageRankLambdaPrime);
+    }
 
-    ////////////bm25 data structures--feel free to modify ////////
-
-    // doc -> (field -> len)
-    Map<Document, Map<String, Double>> lengths;
-
-    // field -> avglen
-    Map<String, Double> avgLengths;
-
-    // doc -> pagerank
-    Map<Document, Double> pagerankScores;
-
-    // field -> B values
-    Map<String, Double> fieldBs;
-
-    // field -> W values
-    Map<String, Double> fieldWs;
-
-    // number of docs in training set
-    int totalNumDocs;
-
-    //////////////////////////////////////////
 
     public double getNetScore(Map<String, Map<String, Double>> tfs, Query q, Map<String, Double> tfQuery, Document d) {
         double score = 0.0;
+
+        for (String term : q.queryWords) {
+            // w_(d,t)
+            double overall_weight = 0.0;
+
+            for (String field : this.TFTYPES) {
+                // term weight
+                double Wf = this.fieldWs.get(field);
+
+                // field-dependent normalized term frequency
+                double ftf = tfs.get(field).get(term);
+
+                overall_weight += (Wf * ftf);
+            }
+
+            double weightTerm = overall_weight / (this.k1 + overall_weight);
+            double idfTerm = this.idfs.get(term);
+            double pagerankTerm = pageRankLambda * pagerankVj(this.pagerankScores.get(d));
+
+            double termScore = weightTerm * idfTerm + pagerankTerm;
+            score += termScore;
+        }
 
         return score;
     }
@@ -143,8 +188,9 @@ public class BM25Scorer extends AScorer {
                 double raw_tf = tfs.get(field).get(term);
                 double len_df = this.lengths.get(d).get(field);
                 double avlen = this.avgLengths.get(field);
-                double norm = 1 + B * ((len_df / avlen) - 1);
                 double B = this.fieldBs.get(field);
+
+                double norm = 1 + B * ((len_df / avlen) - 1);
 
                 double ftf = raw_tf / norm;
                 tfs.get(field).put(term, ftf);
