@@ -11,3 +11,8 @@ bm25:
 	@./rank.sh 2013.data/queryDocTrainData bm25
 	@./score.sh ./results.txt 2013.data/queryDocTrainRel
 
+window:
+	@ant
+	@./rank.sh 2013.data/queryDocTrainData window
+	@./score.sh ./results.txt 2013.data/queryDocTrainRel
+

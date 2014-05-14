@@ -25,8 +25,49 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
     }
 
     private double minWindowSize(SortedMap<Integer, String> indexTermMap, Query q) {
-        double minWindow = 0.0;
-        return minWindow;
+        double minWindowSize = Double.POSITIVE_INFINITY;
+        int startIndex = -1;
+        boolean inMiddle = false;
+        int queryIndex = 0;
+        int queryLength = q.queryWords.size();
+        double currWindowSize = Double.POSITIVE_INFINITY;
+
+        for (Integer currIndex : indexTermMap.keySet()) {
+            String queryTerm = q.queryWords.get(queryIndex);
+            String docTerm = indexTermMap.get(currIndex);
+
+            if (inMiddle && docTerm.equals(q.queryWords.get(0)) && queryIndex == 1) {
+                startIndex = currIndex;
+            }
+
+            // start round
+            if (!inMiddle && queryTerm.equals(docTerm)) {
+                if (queryIndex == queryLength - 1) {
+                    return 1.0;
+                }
+                startIndex = currIndex;
+                inMiddle = true;
+                queryIndex++;
+
+            }
+
+            else if (inMiddle && queryTerm.equals(docTerm)) {
+                // matches last term in query
+                if (queryIndex == queryLength - 1) {
+                    double thisWindowSize = currIndex - startIndex;
+                    if (thisWindowSize < minWindowSize) {
+                        minWindowSize = thisWindowSize;
+                    }
+                    inMiddle = false;
+                    queryIndex = 0;
+                }
+                // matches middle term in query
+                else {
+                    queryIndex++;
+                }
+            }
+        }
+        return minWindowSize;
     }
 
     private double getMinWindowSizeForBody(Map<String, List<Integer>> body, Query q) {
@@ -115,7 +156,7 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
                         docMap.put(d, new HashMap<Query, Double>());
 
                     Map<Query, Double> queryMap = docMap.get(d);
-                    double windowSize = getMinWindowSizeForField(field, d, q);
+                    double windowSize = getMinWindowSizeForField(field, d, query);
                     queryMap.put(query, windowSize);
                 }
             }
@@ -125,7 +166,7 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
     /* calcluates exact window score */
     private double getWindowScore(Document d, Query q) {
         return (Burl * smallestWindowMap.get("url").get(d).get(q) +
-                Bbody * smallestWindowMap.get("body").get(d).get(q)
+                Bbody * smallestWindowMap.get("body").get(d).get(q) +
                 Btitle * smallestWindowMap.get("title").get(d).get(q) +
                 Banchor * smallestWindowMap.get("anchor").get(d).get(q) +
                 Bheader * smallestWindowMap.get("header").get(d).get(q));
