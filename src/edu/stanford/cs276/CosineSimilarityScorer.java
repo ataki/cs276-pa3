@@ -21,13 +21,13 @@ public class CosineSimilarityScorer extends AScorer {
     }
 
     ///////////////weights///////////////////////////
-    double urlweight = 1;
-    double titleweight = 1;
-    double bodyweight = 1;
+    double urlweight = 40;
+    double titleweight = 25;
+    double bodyweight = 50;
     double headerweight = 1;
     double anchorweight = 1;
 
-    double smoothingBodyLength = 500;
+    double smoothingBodyLength = 300;
     //////////////////////////////////////////
 
     boolean USE_SUBLINEAR_SCALING = true;

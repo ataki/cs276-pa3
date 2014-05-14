@@ -19,6 +19,8 @@ import java.util.Map;
 
 public class LoadHandler {
 
+    public static final String IDF_NONEXISTENT_TERM_KEY = "DOC COUNT";
+
     public static Map<Query, Map<String, Document>> loadTrainData(String feature_file_name) throws Exception {
         File feature_file = new File(feature_file_name);
         if (!feature_file.exists()) {
@@ -159,11 +161,15 @@ public class LoadHandler {
 
         //make idf
         for (String term : termDocCount.getMap().keySet()) {
-            double idf = Math.log(totalDocCount / (double) termDocCount.count(term));
+            double count = (double) termDocCount.count(term);
+            double idf = Math.log((totalDocCount + 1) / (count + 1));
             idfs.put(term, idf);
         }
 
-        //saves to file
+        // special term for total doc count
+        idfs.put(LoadHandler.IDF_NONEXISTENT_TERM_KEY, Math.log((double)totalDocCount + 1));
+
+        // saves to file
         try {
             FileOutputStream fos = new FileOutputStream(idfFile);
             ObjectOutputStream oos = new ObjectOutputStream(fos);

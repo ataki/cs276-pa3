@@ -57,23 +57,23 @@ public class BM25Scorer extends AScorer {
 
 
     ///////////////weights///////////////////////////
-    double urlweight = -1;
-    double titleweight = -1;
-    double bodyweight = -1;
-    double headerweight = -1;
-    double anchorweight = -1;
+    double urlweight = 40;
+    double titleweight = 25;
+    double bodyweight = 50;
+    double headerweight = 1;
+    double anchorweight = 1;
 
     ///////bm25 specific weights///////////////
-    double burl = -1;
-    double btitle = -1;
-    double bheader = -1;
-    double bbody = -1;
-    double banchor = -1;
+    double burl = 1;
+    double btitle = 1;
+    double bheader = 1;
+    double bbody = 1;
+    double banchor = 1;
 
-    double k1 = -1;
-    double pageRankLambda = -1;
-    double pageRankLambdaPrime = -1;
-    double pageRankLambdaDoublePrime = -1;
+    double k1 = 1;
+    double pageRankLambda = 1;
+    double pageRankLambdaPrime = 1;
+    double pageRankLambdaDoublePrime = 1;
     //////////////////////////////////////////
 
     ////////////bm25 data structures--feel free to modify ////////
@@ -151,6 +151,14 @@ public class BM25Scorer extends AScorer {
         return pagerank / (pagerank + pageRankLambdaPrime);
     }
 
+    private double getIdfTerm(String term) {
+        /* incorporate Laplace smoothing */
+        if (this.idfs.containsKey(term)) {
+            return this.idfs.get(term);
+        } else {
+            return this.idfs.get(LoadHandler.IDF_NONEXISTENT_TERM_KEY);
+        }
+    }
 
     public double getNetScore(Map<String, Map<String, Double>> tfs, Query q, Map<String, Double> tfQuery, Document d) {
         double score = 0.0;
@@ -170,7 +178,7 @@ public class BM25Scorer extends AScorer {
             }
 
             double weightTerm = overall_weight / (this.k1 + overall_weight);
-            double idfTerm = this.idfs.get(term);
+            double idfTerm = this.getIdfTerm(term);
             double pagerankTerm = pageRankLambda * pagerankVj(this.pagerankScores.get(d));
 
             double termScore = weightTerm * idfTerm + pagerankTerm;

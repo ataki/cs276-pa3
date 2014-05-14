@@ -95,12 +95,12 @@ public class Rank {
                 }
 
                 String queryStr = "query: " + queryBuilder.toString() + "\n";
-                System.out.print(queryStr);
+                // System.out.print(queryStr);
                 bw.write(queryStr);
 
                 for (String res : queryRankings.get(query)) {
                     String urlString = "  url: " + res + "\n";
-                    System.out.print(urlString);
+                    // System.out.print(urlString);
                     bw.write(urlString);
                 }
             }

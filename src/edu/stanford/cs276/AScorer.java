@@ -24,12 +24,19 @@ public abstract class AScorer {
 
         for (String word : q.queryWords) {
             word = word.toLowerCase();
-            if (!tfQuery.containsKey(word)) {
-                tfQuery.put(word, 1.0);
-            } else {
-                double count = tfQuery.get(word);
-                tfQuery.put(word, count + 1.0);
+            double weight = 1.0;
+            if (tfQuery.containsKey(word)) {
+                weight = tfQuery.get(word);
             }
+
+            // apply idf weights
+            if (this.idfs.containsKey(word)) {
+                weight += this.idfs.get(word);
+            } else {
+                weight += this.idfs.get(LoadHandler.IDF_NONEXISTENT_TERM_KEY);
+            }
+
+            tfQuery.put(word, weight);
         }
 
         return tfQuery;
