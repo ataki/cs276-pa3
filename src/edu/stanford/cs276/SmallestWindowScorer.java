@@ -216,8 +216,8 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         // boost by dereasing exponential fn
         // NOTE: 1/B seems to work better
         // than exponential decay (e.g. score * exp(-B))
-        // return score * (1/B);
-        return score * Math.exp(-B);
+        return score * (1/B);
+        // return score * Math.exp(-B);
     }
 
 }

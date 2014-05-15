@@ -33,7 +33,7 @@ public class BM25Scorer extends AScorer {
                 docsSeen.add(url);
             }
         }
-        this.totalNumDocs = docsSeen.size();
+        this.totalNumDocs = (double) docsSeen.size();
 
         for (String field : this.avgLengths.keySet()) {
             this.avgLengths.put(field, this.avgLengths.get(field) / totalNumDocs);
@@ -57,11 +57,11 @@ public class BM25Scorer extends AScorer {
 
 
     ///////////////weights///////////////////////////
-    double urlweight = 1;
-    double titleweight = 1;
-    double bodyweight = 1;
-    double headerweight = 1;
-    double anchorweight = 1;
+    double urlweight = 1.25;
+    double titleweight = 1.05;
+    double bodyweight = 1.25;
+    double headerweight = 0.85;
+    double anchorweight = 0.9;
 
     ///////bm25 specific weights///////////////
     double burl = 1;
@@ -94,7 +94,7 @@ public class BM25Scorer extends AScorer {
     Map<String, Double> fieldWs;
 
     // number of docs in training set
-    int totalNumDocs;
+    double totalNumDocs;
 
     //////////////////////////////////////////
 
@@ -114,7 +114,8 @@ public class BM25Scorer extends AScorer {
         if (d.anchors != null) {
             for (String anchor : d.anchors.keySet()) {
                 double len = (double)anchor.split("\\W+").length;
-                anchorLen += len * d.anchors.get(anchor);
+                double numOccurrences = d.anchors.get(anchor);
+                anchorLen += len * numOccurrences;
             }
         }
 
@@ -129,8 +130,8 @@ public class BM25Scorer extends AScorer {
 
         // update average length for each field
         this.avgLengths.put("url", this.avgLengths.get("url") + urlLen);
-        this.avgLengths.put("title", this.avgLengths.get("title") + titleLen);
         this.avgLengths.put("header", this.avgLengths.get("header") + headerLen);
+        this.avgLengths.put("title", this.avgLengths.get("title") + titleLen);
         this.avgLengths.put("body", this.avgLengths.get("body") + bodyLen);
         this.avgLengths.put("anchor", this.avgLengths.get("anchor") + anchorLen);
     }
@@ -139,6 +140,7 @@ public class BM25Scorer extends AScorer {
         this.pagerankScores.put(d, (double)d.page_rank);
     }
 
+    /* several candidate Vj functions */
     private double pagerankVj(double pagerank) {
         return Math.log(pageRankLambdaPrime + pagerank);
     }
@@ -177,11 +179,12 @@ public class BM25Scorer extends AScorer {
                 overall_weight += (Wf * ftf);
             }
 
-            double weightTerm = overall_weight / (this.k1 + overall_weight);
+            double weightTerm = overall_weight;
+            double scalingTerm = (this.k1 + overall_weight);
             double idfTerm = this.getIdfTerm(term);
-            double pagerankTerm = pageRankLambda * pagerankVj(this.pagerankScores.get(d));
+            double pagerankTerm = pagerankVj(this.pagerankScores.get(d));
 
-            double termScore = weightTerm * idfTerm + pagerankTerm;
+            double termScore = weightTerm * idfTerm / scalingTerm + pageRankLambda * pagerankTerm;
             score += termScore;
         }
 
@@ -191,16 +194,19 @@ public class BM25Scorer extends AScorer {
     //do bm25 normalization
     public void normalizeTFs(Map<String, Map<String, Double>> tfs, Document d, Query q) {
         for (String term : q.queryWords) {
-            double overall_weight = 0.0;
             for (String field : this.TFTYPES) {
                 double raw_tf = tfs.get(field).get(term);
                 double len_df = this.lengths.get(d).get(field);
                 double avlen = this.avgLengths.get(field);
                 double B = this.fieldBs.get(field);
-
                 double norm = 1 + B * ((len_df / avlen) - 1);
-
-                double ftf = raw_tf / norm;
+                if (norm == 0)
+                  norm = 1 + B * ((1 / avlen) - 1);
+                double ftf = 0.0;
+                if (avlen != 0.0)
+                    ftf = raw_tf / norm;
+                // replace raw term frequencies in tfs 
+                // wtih normalized term frequencies
                 tfs.get(field).put(term, ftf);
             }
         }
