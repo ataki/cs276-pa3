@@ -57,9 +57,9 @@ public class BM25Scorer extends AScorer {
 
 
     ///////////////weights///////////////////////////
-    double urlweight = 40;
-    double titleweight = 25;
-    double bodyweight = 50;
+    double urlweight = 1;
+    double titleweight = 1;
+    double bodyweight = 1;
     double headerweight = 1;
     double anchorweight = 1;
 

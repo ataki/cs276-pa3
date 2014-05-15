@@ -35,6 +35,7 @@ public abstract class AScorer {
             } else {
                 weight += this.idfs.get(LoadHandler.IDF_NONEXISTENT_TERM_KEY);
             }
+            System.out.println("weight: " + weight);
 
             tfQuery.put(word, weight);
         }

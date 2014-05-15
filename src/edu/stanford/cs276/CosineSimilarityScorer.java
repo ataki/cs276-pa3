@@ -21,13 +21,13 @@ public class CosineSimilarityScorer extends AScorer {
     }
 
     ///////////////weights///////////////////////////
-    double urlweight = 40;
-    double titleweight = 25;
-    double bodyweight = 50;
+    double urlweight = 1;
+    double titleweight = 1;
+    double bodyweight = 1;
     double headerweight = 1;
     double anchorweight = 1;
 
-    double smoothingBodyLength = 300;
+    double smoothingBodyLength = 500;
     //////////////////////////////////////////
 
     boolean USE_SUBLINEAR_SCALING = true;
@@ -50,10 +50,10 @@ public class CosineSimilarityScorer extends AScorer {
             String term = q.queryWords.get(i);
             double docScore = (
                     urlweight * tfs.get("url").get(term) +
-                            titleweight * tfs.get("title").get(term) +
-                            bodyweight * tfs.get("body").get(term) +
-                            headerweight * tfs.get("header").get(term) +
-                            anchorweight * tfs.get("anchor").get(term)
+                    titleweight * tfs.get("title").get(term) +
+                    bodyweight * tfs.get("body").get(term) +
+                    headerweight * tfs.get("header").get(term) +
+                    anchorweight * tfs.get("anchor").get(term)
             );
             docVector[i] = docScore;
             queryVector[i] = tfQuery.get(term);
@@ -99,7 +99,6 @@ public class CosineSimilarityScorer extends AScorer {
         this.normalizeTFs(tfs, d, q);
 
         Map<String, Double> tfQuery = getQueryFreqs(q);
-
 
         return getNetScore(tfs, q, tfQuery, d);
     }
