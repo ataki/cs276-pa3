@@ -6,14 +6,16 @@ import java.util.*;
 public class SmallestWindowScorer extends CosineSimilarityScorer {
 
     /////smallest window specifichyperparameters////////
-    double B = -1;
-    double boostmod = -1;
+    double B = 1.0;
+    // boostmod is meant to switch btwn diff methods of discounting 
+    // window score, so possible it's not used in final copy 
+    double boostmod = 1; 
 
-    double Burl = 0;
-    double Btitle = -1;
-    double Bheader = 0;
-    double Banchor = 0;
-    double Bbody = -1;
+    double Burl = 1;
+    double Btitle = 1;
+    double Bheader = 1;
+    double Banchor = 1;
+    double Bbody = 1;
     //////////////////////////////
 
     // map of (field, doc, query) -> window size
@@ -214,7 +216,8 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         // boost by dereasing exponential fn
         // NOTE: 1/B seems to work better
         // than exponential decay (e.g. score * exp(-B))
-        return score * (1/B);
+        // return score * (1/B);
+        return score * Math.exp(-B);
     }
 
 }

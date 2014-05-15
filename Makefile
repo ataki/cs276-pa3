@@ -21,3 +21,30 @@ window:
 	@ant
 	@./rank.sh data/pa3.signal.train window
 	@./score.sh ./results.txt data/pa3.rel.train
+
+# -----------------------------------------------
+
+baselineDev:
+	@ant
+	@./rank.sh data/pa3.signal.dev baseline
+	@./score.sh ./results.txt data/pa3.rel.dev
+	
+cosineDev:
+	@ant
+	@./rank.sh data/pa3.signal.dev cosine
+	@./score.sh ./results.txt data/pa3.rel.dev
+
+scoreDev:
+	@./score.sh ./results.txt data/pa3.rel.dev
+
+bm25Dev:
+	@ant
+	@./rank.sh data/pa3.signal.dev bm25
+	@./score.sh ./results.txt data/pa3.rel.dev
+
+windowDev:
+	@ant
+	@./rank.sh data/pa3.signal.dev window
+	@./score.sh ./results.txt data/pa3.rel.dev
+
+

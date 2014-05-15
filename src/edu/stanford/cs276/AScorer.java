@@ -24,6 +24,7 @@ public abstract class AScorer {
 
         for (String word : q.queryWords) {
             word = word.toLowerCase();
+
             double weight = 1.0;
             if (tfQuery.containsKey(word)) {
                 weight = tfQuery.get(word);
@@ -35,7 +36,6 @@ public abstract class AScorer {
             } else {
                 weight += this.idfs.get(LoadHandler.IDF_NONEXISTENT_TERM_KEY);
             }
-            System.out.println("weight: " + weight);
 
             tfQuery.put(word, weight);
         }
@@ -128,7 +128,10 @@ public abstract class AScorer {
         // body_hits
         Map<String, Double> bodyMap = new HashMap<String, Double>();
         for (String term : docBodyHits.keySet()) {
-            bodyMap.put(term, (double) docBodyHits.get(term).size());
+            double count = 0.0;
+            if (bodyMap.containsKey(term))
+                count = bodyMap.get(term);
+            bodyMap.put(term, count + (double) docBodyHits.get(term).size());
         }
 
         // anchors
@@ -146,6 +149,7 @@ public abstract class AScorer {
         }
 
         Map<String, Map<String, Double>> allMaps = new HashMap<String, Map<String, Double>>();
+
         allMaps.put("url", urlMap);
         allMaps.put("title", titleMap);
         allMaps.put("header", headersMap);
