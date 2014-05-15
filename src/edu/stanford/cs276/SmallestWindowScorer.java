@@ -9,10 +9,10 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
     double B = -1;
     double boostmod = -1;
 
-    double Burl = -1;
+    double Burl = 0;
     double Btitle = -1;
-    double Bheader = -1;
-    double Banchor = -1;
+    double Bheader = 0;
+    double Banchor = 0;
     double Bbody = -1;
     //////////////////////////////
 
@@ -80,18 +80,24 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         return minWindowSize(indexTermMap, q);
     }
 
-    private double getMinWindowSizeForString(String str, Query q) {
+    /* 
+     * given array of split terms and query, computes min window size. 
+     * handles cases where strs is null or an empty array
+     */
+    private double getMinWindowSizeForStringTerm(String[] strs, Query q) {
+        if (strs == null || strs.length == 0) 
+          return Double.POSITIVE_INFINITY;
+
         SortedMap<Integer, String> indexTermMap = new TreeMap<Integer, String>();
-        List<String> plist = Arrays.asList(str.split("\\s+"));
-        for (int i = 0; i < plist.size(); i++) {
-            indexTermMap.put(i, plist.get(i));
+        for (int i = 0; i < strs.length; i++) {
+            indexTermMap.put(i, strs[i]);
         }
         return minWindowSize(indexTermMap, q);
     }
 
     /*
-        depending on the field, calculate the window size sligtly differently.
-        Returns Double.POSITIVE_INFINITY if no window size is found
+     * depending on the field, calculate the window size sligtly differently.
+     * Returns Double.POSITIVE_INFINITY if no window size is found
      */
     private double getMinWindowSizeForField(String field, Document d, Query q) {
         double minSize = Double.POSITIVE_INFINITY;
@@ -99,13 +105,13 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         // if body, merge posting lists
         if (field.equals("body")) {
             if (d.body_hits != null)
-                return getMinWindowSizeForBody(d.body_hits, q);
+                minSize = getMinWindowSizeForBody(d.body_hits, q);
         }
 
         else if (field.equals("anchors")) {
             if (d.anchors != null) {
                 for (String anchor : d.anchors.keySet()) {
-                    double curSize = getMinWindowSizeForString(anchor, q);
+                    double curSize = getMinWindowSizeForStringTerm(this.splitTitleOrHeader(anchor), q);
                     if (minSize > curSize) {
                         minSize = curSize;
                     }
@@ -116,7 +122,7 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         else if (field.equals("header")) {
             if (d.headers != null) {
                 for (String header : d.headers) {
-                    double curSize = getMinWindowSizeForString(header, q);
+                    double curSize = getMinWindowSizeForStringTerm(this.splitTitleOrHeader(header), q);
                     if (minSize > curSize) {
                         minSize = curSize;
                     }
@@ -125,12 +131,11 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         }
 
         else {
-            String value = "";
-            if (field.equals("url")) value = d.url;
-            if (field.equals("title")) value = d.title;
-            return getMinWindowSizeForString(value, q);
+            String [] value = null;
+            if (field.equals("url")) value = this.splitUrl(d.url);
+            if (field.equals("title")) value = this.splitTitleOrHeader(d.title);
+            minSize = getMinWindowSizeForStringTerm(value, q);
         }
-
         return minSize;
     }
 
@@ -172,6 +177,12 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
                 Bheader * smallestWindowMap.get("header").get(d).get(q));
     }
 
+    private double getNumUniqueTerms(Query q) {
+      Set<String> uniqueTerms = new HashSet<String>();
+      uniqueTerms.addAll(q.queryWords);
+      return (double)uniqueTerms.size();
+    }
+
     @Override
     public double getSimScore(Document d, Query q) {
         Map<String, Map<String, Double>> tfs = this.getDocTermFreqs(d, q);
@@ -180,8 +191,30 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
 
         Map<String, Double> tfQuery = getQueryFreqs(q);
 
-        return this.getNetScore(tfs, q, tfQuery, d) +
-                this.getWindowScore(d, q);
+        double score = this.getNetScore(tfs, q, tfQuery, d);
+
+        //////////////// apply window boost ///////////////////////
+
+        double windowScore = this.getWindowScore(d, q);
+
+        // default boost - 
+        // no window size found
+        if (windowScore == Double.POSITIVE_INFINITY) {
+          return score + 1.0;
+        } 
+
+        // exact sequence found - 
+        // full boost
+        double numUniqueTerms = getNumUniqueTerms(q);
+        if (numUniqueTerms == windowScore) {
+          return score * B;
+        } 
+
+        // potentially large window size found - 
+        // boost by dereasing exponential fn
+        // NOTE: 1/B seems to work better
+        // than exponential decay (e.g. score * exp(-B))
+        return score * (1/B);
     }
 
 }
