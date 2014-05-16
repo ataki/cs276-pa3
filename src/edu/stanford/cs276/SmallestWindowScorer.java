@@ -6,17 +6,18 @@ import java.util.*;
 public class SmallestWindowScorer extends CosineSimilarityScorer {
 
     /////smallest window specifichyperparameters////////
-    double B = 1.0;
     // boostmod is meant to switch btwn diff methods of discounting 
     // window score, so possible it's not used in final copy 
-    double boostmod = 1; 
+    // double boostmod = 1; 
 
-    double Burl = 1;
-    double Btitle = 1;
+    double Burl = 0.7;
+    double Btitle = 0.9;
     double Bheader = 1;
     double Banchor = 1;
-    double Bbody = 1;
+    double Bbody = 0.7;
     //////////////////////////////
+    
+    Map<String, Double> windowBs;
 
     // map of (field, doc, query) -> window size
     Map<String, Map<Document, Map<Query, Double>>> smallestWindowMap;
@@ -24,9 +25,35 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
     public SmallestWindowScorer(Map<String, Double> idfs, Map<Query, Map<String, Document>> queryDict) {
         super(idfs);
         precomputeAllSmallestWindows(queryDict);
+        windowBs = new HashMap<String, Double>();
+        windowBs.put("url", Burl);
+        windowBs.put("body", Bbody);
+        windowBs.put("title", Btitle);
+        windowBs.put("header", Bheader);
+        windowBs.put("anchor", Banchor);
+        asdf = new HashMap<String, Integer>();
     }
 
+    /* assumes that all values in indexTermMap are already lower-cased */
     private double minWindowSize(SortedMap<Integer, String> indexTermMap, Query q) {
+
+        // Handle query size of 1 (special case of window size 1)
+
+        if (q.queryWords.size() == 1) {
+            String query = q.queryWords.get(0).toLowerCase();
+
+            // try to find the single word among postings terms
+            for (Integer i : indexTermMap.keySet()) {
+                if (indexTermMap.get(i).equals(query)) {
+                    return 1.0;
+                }
+            }
+            // otherwise, not found
+            return Double.POSITIVE_INFINITY;
+        }
+
+        // Handle query sizes of two or more
+
         double minWindowSize = Double.POSITIVE_INFINITY;
         int startIndex = -1;
         boolean inMiddle = false;
@@ -35,7 +62,7 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         double currWindowSize = Double.POSITIVE_INFINITY;
 
         for (Integer currIndex : indexTermMap.keySet()) {
-            String queryTerm = q.queryWords.get(queryIndex);
+            String queryTerm = q.queryWords.get(queryIndex).toLowerCase();
             String docTerm = indexTermMap.get(currIndex);
 
             if (inMiddle && docTerm.equals(q.queryWords.get(0)) && queryIndex == 1) {
@@ -76,7 +103,7 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         SortedMap<Integer, String> indexTermMap = new TreeMap<Integer, String>();
         for (String term : body.keySet()) {
             for (Integer pos : body.get(term)) {
-                indexTermMap.put(pos, term);
+                indexTermMap.put(pos, term.toLowerCase());
             }
         }
         return minWindowSize(indexTermMap, q);
@@ -92,7 +119,7 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
 
         SortedMap<Integer, String> indexTermMap = new TreeMap<Integer, String>();
         for (int i = 0; i < strs.length; i++) {
-            indexTermMap.put(i, strs[i]);
+            indexTermMap.put(i, strs[i].toLowerCase());
         }
         return minWindowSize(indexTermMap, q);
     }
@@ -170,21 +197,35 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
         }
     }
 
-    /* calcluates exact window score */
-    private double getWindowScore(Document d, Query q) {
-        return (Burl * smallestWindowMap.get("url").get(d).get(q) +
-                Bbody * smallestWindowMap.get("body").get(d).get(q) +
-                Btitle * smallestWindowMap.get("title").get(d).get(q) +
-                Banchor * smallestWindowMap.get("anchor").get(d).get(q) +
-                Bheader * smallestWindowMap.get("header").get(d).get(q));
-    }
-
     private double getNumUniqueTerms(Query q) {
       Set<String> uniqueTerms = new HashSet<String>();
-      uniqueTerms.addAll(q.queryWords);
+      for (String word : q.queryWords) {
+        uniqueTerms.add(word.toLowerCase());
+      }
       return (double)uniqueTerms.size();
     }
 
+    private double boost(double score, double windowScore, double numUniqueTerms, double B) {
+        // default boost
+        // no window size found
+        if (windowScore == Double.POSITIVE_INFINITY) {
+          return score;
+        } 
+
+        // exact sequence found
+        // full boost
+        if (numUniqueTerms == windowScore) {
+          return (score) * B;
+        } 
+
+        // potentially large window size found
+        // boost by dereasing exponential fn
+        // NOTE: 1/B seems to work better
+        // than exponential decay (e.g. score * exp(-B))
+        return score  * (1/B);
+        // return score * Math.exp(-B);
+    }
+    Map<String, Integer> asdf;
     @Override
     public double getSimScore(Document d, Query q) {
         Map<String, Map<String, Double>> tfs = this.getDocTermFreqs(d, q);
@@ -193,31 +234,32 @@ public class SmallestWindowScorer extends CosineSimilarityScorer {
 
         Map<String, Double> tfQuery = getQueryFreqs(q);
 
+        double numUniqueTerms = getNumUniqueTerms(q);
+
+        // score from cosine similarity
         double score = this.getNetScore(tfs, q, tfQuery, d);
 
-        //////////////// apply window boost ///////////////////////
+        // find min window size across fields
+        double minWindowSize = Double.POSITIVE_INFINITY;
+        String minWindowSizeField = "url";
 
-        double windowScore = this.getWindowScore(d, q);
+        // apply window boost for each field
+        for (String field : this.TFTYPES) {
+            double fieldWindowSize = smallestWindowMap.get(field).get(d).get(q);
+            if (fieldWindowSize < minWindowSize) {
+                minWindowSize = fieldWindowSize;
+                minWindowSizeField = field;
+            }
+        }
 
-        // default boost - 
-        // no window size found
-        if (windowScore == Double.POSITIVE_INFINITY) {
-          return score + 1.0;
-        } 
+        if (!asdf.containsKey(minWindowSizeField)) {
+            asdf.put(minWindowSizeField, 1);
+        } else 
+            asdf.put(minWindowSizeField, asdf.get(minWindowSizeField) + 1);
 
-        // exact sequence found - 
-        // full boost
-        double numUniqueTerms = getNumUniqueTerms(q);
-        if (numUniqueTerms == windowScore) {
-          return score * B;
-        } 
-
-        // potentially large window size found - 
-        // boost by dereasing exponential fn
-        // NOTE: 1/B seems to work better
-        // than exponential decay (e.g. score * exp(-B))
-        return score * (1/B);
-        // return score * Math.exp(-B);
+        double factor = windowBs.get(minWindowSizeField);
+        score = boost(score, minWindowSize, numUniqueTerms, factor);
+        return score;
     }
 
 }

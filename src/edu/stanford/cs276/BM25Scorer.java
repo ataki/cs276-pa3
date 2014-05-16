@@ -57,21 +57,21 @@ public class BM25Scorer extends AScorer {
 
 
     ///////////////weights///////////////////////////
-    double urlweight = 1.25;
-    double titleweight = 1.05;
-    double bodyweight = 1.25;
-    double headerweight = 0.85;
-    double anchorweight = 0.9;
+    double urlweight = 1;
+    double titleweight = 1;
+    double bodyweight = 1;
+    double headerweight = 1;
+    double anchorweight = 1;
 
     ///////bm25 specific weights///////////////
     double burl = 1;
     double btitle = 1;
-    double bheader = 1;
-    double bbody = 1;
-    double banchor = 1;
+    double bheader = 0.8;
+    double bbody = 0.7;
+    double banchor = 0.7;
 
-    double k1 = 1;
-    double pageRankLambda = 1;
+    double k1 = 100;
+    double pageRankLambda = 0.3;
     double pageRankLambdaPrime = 1;
     double pageRankLambdaDoublePrime = 1;
     //////////////////////////////////////////
@@ -153,6 +153,14 @@ public class BM25Scorer extends AScorer {
         return pagerank / (pagerank + pageRankLambdaPrime);
     }
 
+    double alpha = 0.6;
+    double k = 1;
+    double w = 1.8;
+    private double pagerankVjSigmoidM(double pagerank) {
+        double S_term = Math.pow(pagerank, alpha);
+        return w * (S_term) / (S_term + Math.pow(k, alpha));
+    }
+
     private double getIdfTerm(String term) {
         /* incorporate Laplace smoothing */
         if (this.idfs.containsKey(term)) {
@@ -182,7 +190,8 @@ public class BM25Scorer extends AScorer {
             double weightTerm = overall_weight;
             double scalingTerm = (this.k1 + overall_weight);
             double idfTerm = this.getIdfTerm(term);
-            double pagerankTerm = pagerankVj(this.pagerankScores.get(d));
+            double pagerankTerm = pagerankVjSaturation(this.pagerankScores.get(d));
+            // double pagerankTerm = pagerankVj(this.pagerankScores.get(d));
 
             double termScore = weightTerm * idfTerm / scalingTerm + pageRankLambda * pagerankTerm;
             score += termScore;

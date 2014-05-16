@@ -57,6 +57,9 @@ public class Rank {
                 curRankings.add(urlAndScore.getFirst());
             queryRankings.put(query, curRankings);
         }
+        if (scoreType.equals("window")) {
+            System.out.println(((SmallestWindowScorer)scorer).asdf);
+        }
         return queryRankings;
     }
 
